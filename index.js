@@ -25,7 +25,8 @@ import { FRONTEND } from "./config.js";
 const app = express();
 
 app.use(cors({
-  origin: ["http://localhost:3000", FRONTEND],
+  origin: ["http://localhost:3000", FRONTEND ,  "https://expo-front-ggz4.vercel.app"
+],
   methods: "GET,POST,PUT,DELETE,PATCH",
   credentials: true
 }));
