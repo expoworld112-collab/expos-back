@@ -15,128 +15,140 @@ import storyRoutes from "./routes/slides.js";
 import "dotenv/config.js";
 import session from "express-session";
 import passport from "passport";
-import { Strategy as GoogleStrategy } from 'passport-google-oauth2';
-const clientid = process.env.GOOGLE_CLIENT_ID
-const clientsecret = process.env.GOOGLE_CLIENT_SECRET
+import { Strategy as GoogleStrategy } from "passport-google-oauth2";
 import User from "./models/user.js";
 import jwt from "jsonwebtoken";
 import { FRONTEND } from "./config.js";
 
 const app = express();
 
-app.use(cors({
-  origin: ["http://localhost:3000", FRONTEND ,  "https://expo-front-ggz4.vercel.app"
-],
-  methods: "GET,POST,PUT,DELETE,PATCH",
-  credentials: true
-}));
+/* ✅ FIX #1 — FULL CORS + OPTIONS SUPPORT */
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://expo-front-ggz4.vercel.app",
+  FRONTEND
+];
 
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+app.options("*", cors());
+
+/* DB */
 mongoose.set("strictQuery", true);
-mongoose.connect(process.env.MONGO_URI, {}).then(() => console.log("DB connected")).catch((err) => console.log("DB Error => ", err));
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => console.log("DB connected"))
+  .catch((err) => console.log("DB Error => ", err));
 
-app.use(morgan('dev'));
+/* Middlewares */
+app.use(morgan("dev"));
 app.use(bodyParser.json());
 app.use(cookieParser());
-app.use('/api', blogRoutes);
-app.use('/api', authRoutes);
-app.use('/api', userRoutes);
-app.use('/api', categoryRoutes);
-app.use('/api', tagRoutes);
-app.use('/api', formRoutes);
-app.use('/api', ImageRoutes);
-app.use('/api', storyRoutes);
 
-app.get('/', (req, res) => { res.json("Backend index"); });
-const port = process.env.PORT || 8000;
-app.listen(port, () => { console.log(`Server is running on port ${port}`); });
+/* SESSION FIX — cannot use secure cookie on local or Vercel serverless */
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "secret123",
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+      secure: false, // ❗ must be false on Vercel serverless
+      sameSite: "lax",
+      httpOnly: true,
+    },
+  })
+);
 
-app.use(session({
-  secret: clientsecret,
-  resave: false,
-  saveUninitialized: true,
-  cookie: {
-    secure: true,
-    sameSite: 'None',
-    httpOnly: true
-  },
-}))
-
-
+/* PASSPORT */
 app.use(passport.initialize());
 app.use(passport.session());
 
+const clientid = process.env.GOOGLE_CLIENT_ID;
+const clientsecret = process.env.GOOGLE_CLIENT_SECRET;
 
 passport.use(
-  new GoogleStrategy({
-    clientID: clientid,
-    clientSecret: clientsecret,
-    callbackURL: "/auth/google/callback",
-    scope: ["profile", "email"]
-  },
+  new GoogleStrategy(
+    {
+      clientID: clientid,
+      clientSecret: clientsecret,
+      callbackURL: "/auth/google/callback",
+      scope: ["profile", "email"],
+    },
     async (accessToken, refreshToken, profile, done) => {
       try {
-        let user = await User.findOne({ email: profile.emails[0].value }, "email username name profile role");
-        return done(null, user)
+        let user = await User.findOne(
+          { email: profile.emails[0].value },
+          "email username name profile role"
+        );
+        return done(null, user);
       } catch (error) {
-        return done(error, null)
+        return done(error, null);
       }
     }
   )
-)
+);
 
-passport.serializeUser((user, done) => { done(null, user); })
-passport.deserializeUser((user, done) => { done(null, user); });
+passport.serializeUser((user, done) => done(null, user));
+passport.deserializeUser((user, done) => done(null, user));
 
-app.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+/* GOOGLE OAUTH ROUTES */
+app.get(
+  "/auth/google",
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
 
-
-app.get("/auth/google/callback", passport.authenticate("google", {
-  successRedirect: `${FRONTEND}`,
-  failureRedirect: `${FRONTEND}/signin`
-}))
-
+app.get(
+  "/auth/google/callback",
+  passport.authenticate("google", {
+    successRedirect: FRONTEND,
+    failureRedirect: `${FRONTEND}/signin`,
+  })
+);
 
 app.get("/login/success", async (req, res) => {
   if (req.user) {
-    console.log(req.user);
-    const token = jwt.sign({ _id: req.user._id }, "Div12@", { expiresIn: '10d' });
-    res.status(200).json({ user: req.user, token })
+    const token = jwt.sign({ _id: req.user._id }, "Div12@", {
+      expiresIn: "10d",
+    });
+    res.status(200).json({ user: req.user, token });
+  } else {
+    res.status(400).json({ message: "Not Authorized" });
   }
-  else { res.status(400).json({ message: "Not Authorized" }) }
-})
-
+});
 
 app.get("/logout", (req, res, next) => {
   req.logout(function (err) {
-    if (err) { return next(err) }
+    if (err) return next(err);
     res.redirect(`${FRONTEND}/signin`);
-  })
-})
-
-
-
-
-
-
-
-
-
-/*
-app.get("/auth/google/callback", (req, res, next) => {
-  passport.authenticate("google", (err, user) => {
-    if (err || !user) {
-      return res.redirect(`${FRONTEND}/signin`);
-    }
-    req.login(user, (loginErr) => {
-      if (loginErr) {
-        return res.redirect(`${FRONTEND}/signin`);
-      }
-      if (user.role === 1) {
-        return res.redirect(`${FRONTEND}/admin`);
-      } else {
-        return res.redirect(`${FRONTEND}/user`);
-      }
-    });
-  })(req, res, next);
+  });
 });
-*/
+
+/* API ROUTES */
+app.use("/api", blogRoutes);
+app.use("/api", authRoutes);
+app.use("/api", userRoutes);
+app.use("/api", categoryRoutes);
+app.use("/api", tagRoutes);
+app.use("/api", formRoutes);
+app.use("/api", ImageRoutes);
+app.use("/api", storyRoutes);
+
+/* BASE */
+app.get("/", (req, res) => {
+  res.json("Backend index");
+});
+
+/* ❗ FIX #2 — REMOVE app.listen FOR VERCEL */
+export default app;
