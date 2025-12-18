@@ -37,15 +37,15 @@ mongoose
   .catch((err) => console.error("MongoDB connection error ❌", err));
 
 
-// const FRONTEND =
-//   process.env.FRONTEND || "https://expo-front-ggz4.vercel.app";
-// const BACKEND =
-//   process.env.BACKEND_URL || "https://your-backend.vercel.app";
-
 const FRONTEND =
-  process.env.FRONTEND || "https://localhost:3000";
+  process.env.FRONTEND || "https://expo-front-ggz4.vercel.app";
 const BACKEND =
-  process.env.BACKEND_URL || "https://localhost:8000";
+  process.env.BACKEND_URL || "https://expos-back.vercel.app/";
+
+// const FRONTEND =
+//   process.env.FRONTEND || "https://localhost:3000";
+// const BACKEND =
+//   process.env.BACKEND_URL || "https://localhost:8000";
 
 /* ---------------------------------------------------
    CORS (correct for cookies + OAuth)
