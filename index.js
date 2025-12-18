@@ -38,7 +38,7 @@ mongoose
 
 
 const FRONTEND =
-  process.env.FRONTEND || "https://expo-front-x8h5.vercel.app/";
+  process.env.FRONTEND || "https://expo-front-x8h5.vercel.app";
 const BACKEND =
   process.env.BACKEND_URL || "https://expos-back.vercel.app/";
 
