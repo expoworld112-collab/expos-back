@@ -36,11 +36,14 @@ mongoose
   .then(() => console.log("MongoDB connected ✅"))
   .catch((err) => console.error("MongoDB connection error ❌", err));
 
+  const FRONTEND = (process.env.FRONTEND || "https://expo-front-x8h5.vercel.app").replace(/\/+$/, "");
+const BACKEND = (process.env.BACKEND_URL || "https://expos-back.vercel.app").replace(/\/+$/, "");
 
-const FRONTEND =
-  process.env.FRONTEND || "https://expo-front-x8h5.vercel.app";
-const BACKEND =
-  process.env.BACKEND_URL || "https://expos-back.vercel.app/";
+
+// const FRONTEND =
+//   process.env.FRONTEND || "https://expo-front-x8h5.vercel.app";
+// const BACKEND =
+//   process.env.BACKEND_URL || "https://expos-back.vercel.app/";
 
 // const FRONTEND =
 //   process.env.FRONTEND || "https://localhost:3000";
